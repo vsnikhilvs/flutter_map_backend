@@ -9,6 +9,7 @@ const schema = new Schema({
   passwordHash: { type: String, required: false },
   createdDate: { type: String, required: false, default: Date.now() },
   avatar: { type: String, required: false, default: '' },
+  phone: { type: Number, required: false, default: 0 },
 });
 
 schema.set("toJSON", {

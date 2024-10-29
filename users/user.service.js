@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const db = require("../_helpers/db");
+require("dotenv").config();
 
 module.exports = {
   authenticate,
@@ -17,14 +18,14 @@ module.exports = {
 };
 
 async function create(params) {
-  console.log(params)
+  // return "API call vannittunde . . .";
   // validate
   if (await db.User.findOne({ where: { username: params.username } })) {
     throw 'Username "' + params.username + '" is already taken';
   }
   // hash password
   if (params.password) {
-    params.hash = await bcrypt.hash(params.password, 10);
+    params.passwordHash = await bcrypt.hash(params.password, 10);
   }
   // save user
   await db.User.create({ ...params, createdDate: Date.now() });
@@ -42,7 +43,7 @@ async function update(id, params) {
   }
   // hash password if it was entered
   if (params.password) {
-    params.hash = await bcrypt.hash(params.password, 10);
+    params.passwordHash = await bcrypt.hash(params.password, 10);
   }
   // copy params to user and save
   Object.assign(user, params);
@@ -57,8 +58,11 @@ async function _delete(id) {
 
 async function authenticate({ username, password, ipAddress }) {
   const user = await db.User.findOne({ username });
-
-  if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+  if (
+    !user ||
+    user === null ||
+    !bcrypt.compareSync(password, user.passwordHash)
+  ) {
     throw "Username or password is incorrect";
   }
 
@@ -147,7 +151,7 @@ async function getRefreshToken(token) {
 
 function generateJwtToken(user) {
   // create a jwt token containing the user id that expires in 15 minutes
-  return jwt.sign({ sub: user.id, id: user.id }, config.secret, {
+  return jwt.sign({ sub: user.id, id: user.id }, process.env.SECRET_KEY, {
     expiresIn: "15m",
   });
 }
@@ -167,9 +171,9 @@ function randomTokenString() {
 }
 
 function basicDetails(user) {
-  // const { id, firstName, lastName, username, role = "" } = user;
-  // return { id, firstName, lastName, username, role };
-  return user;
+  const { id, firstName, lastName, username, role = "" } = user;
+  return { id, firstName, lastName, username, role };
+  // return user;
 }
 
 function omitHash(user) {

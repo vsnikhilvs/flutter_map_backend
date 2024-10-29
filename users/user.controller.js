@@ -1,22 +1,23 @@
 const express = require("express");
 const Joi = require("@hapi/joi");
 const validateRequest = require("../_middleware/validate-request");
-const authorize = require("../_middleware/authorize");
+const verifyToken = require("../_middleware/authorize");
 const userService = require("./user.service");
+const jwtoken = require("jsonwebtoken");
 
 const router = express.Router();
 
 // routes
-router.post("/authenticate", authenticate);
+router.post("/authenticate", authenticateSchema, authenticate);
 router.post("/register", register);
-router.get("/", getAll);
-router.get("/current", getCurrent);
-router.get("/:id", getById);
-router.put("/:id", update);
-router.delete("/:id", _delete);
+router.get("/", verifyToken(), getAll);
+router.get("/current", verifyToken(), getCurrent);
+router.get("/:id", verifyToken(), getById);
+router.put("/:id", verifyToken(), update);
+router.delete("/:id", verifyToken(), _delete);
 router.post("/refresh-token", refreshToken);
-router.post("/revoke-token", revokeToken);
-router.get("/:id/refresh-tokens", getRefreshTokens);
+router.post("/revoke-token", verifyToken(), revokeTokenSchema, revokeToken);
+router.get("/:id/refresh-tokens", verifyToken(), getRefreshTokens);
 // routes
 // router.post("/authenticate", authenticateSchema, authenticate);
 // router.post("/refresh-token", refreshToken);
@@ -41,6 +42,7 @@ function authenticate(req, res, next) {
   userService
     .authenticate({ username, password, ipAddress })
     .then(({ refreshToken, ...user }) => {
+      console.log(user);
       setTokenCookie(res, refreshToken);
       res.json(user);
     })
@@ -50,7 +52,11 @@ function authenticate(req, res, next) {
 function register(req, res, next) {
   userService
     .create(req.body)
-    .then(() => res.json({}))
+    .then(() =>
+      res.json({
+        message: "User registration success",
+      })
+    )
     .catch((err) => next(err));
 }
 
@@ -98,19 +104,34 @@ function getAll(req, res, next) {
     .catch(next);
 }
 
-function getCurrent(req, res, next) {
-  userService
-    .getById(req.user.sub)
-    .then((user) => (user ? res.json(user) : res.sendStatus(404)))
-    .catch((err) => next(err));
+async function getCurrent(req, res, next) {
+  try {
+    const token =
+      req.headers.authorization && req.headers.authorization.split(" ")[1];
+    const tokenInfo = jwtoken.decode(token);
+    const innerTokenInfo = jwtoken.verify(
+      tokenInfo.jwtToken,
+      process.env.SECRET_KEY
+    );
+    if (!innerTokenInfo || !innerTokenInfo.sub) {
+      return res.status(400).json({ message: "Invalid token" });
+    }
+    const user = await userService.getById(innerTokenInfo.sub);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error("Error in getCurrent function:", error);
+    next(error);
+  }
 }
 
 function getById(req, res, next) {
   // regular users can get their own record and admins can get any record
-  if (req.params.id !== req.user.id && req.user.role !== "Admin") {
+  if (req.params.id !== req.user.id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-
   userService
     .getById(req.params.id)
     .then((user) => (user ? res.json(user) : res.sendStatus(404)))
@@ -119,7 +140,7 @@ function getById(req, res, next) {
 
 function getRefreshTokens(req, res, next) {
   // users can get their own refresh tokens and admins can get any user's refresh tokens
-  if (req.params.id !== req.user.id && req.user.role !== "Admin") {
+  if (req.params.id !== req.user.id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
