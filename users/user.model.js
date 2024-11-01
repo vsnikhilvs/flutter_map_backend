@@ -8,8 +8,20 @@ const schema = new Schema({
   username: { type: String, unique: true, required: true },
   passwordHash: { type: String, required: false },
   createdDate: { type: String, required: false, default: Date.now() },
-  avatar: { type: String, required: false, default: '' },
+  avatar: { type: String, required: false, default: "" },
   phone: { type: Number, required: false, default: 0 },
+  rooms: {
+    type: [
+      {
+        roomName: String,
+        roomDescription: String,
+        members: Array,
+        role: String,
+      },
+    ],
+    required: false,
+    default: [],
+  },
 });
 
 schema.set("toJSON", {

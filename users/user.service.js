@@ -15,7 +15,14 @@ module.exports = {
   getAll,
   getById,
   getRefreshTokens,
+  getRoomsOfUser,
+  updateUserRoom,
 };
+
+async function getRoomsOfUser(id) {
+  const user = await getUser(id);
+  return user.rooms;
+}
 
 async function create(params) {
   // return "API call vannittunde . . .";
@@ -29,6 +36,17 @@ async function create(params) {
   }
   // save user
   await db.User.create({ ...params, createdDate: Date.now() });
+}
+
+async function updateUserRoom(id, params) {
+  const user = getUser(id);
+  if (!user) throw new Error("User not found !");
+  const updatedUser = await db.User.findByIdAndUpdate(
+    id,
+    { $set: { rooms: params } },
+    { new: true }
+  );
+  return true;
 }
 
 async function update(id, params) {

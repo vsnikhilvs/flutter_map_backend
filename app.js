@@ -20,6 +20,7 @@ app.use(
 );
 
 app.use("/users", require("./users/user.controller"));
+app.use("/rooms", require("./rooms/room.controller"));
 
 app.get("/items", (req, res) => {
   res.json({ message: "Get all items" });

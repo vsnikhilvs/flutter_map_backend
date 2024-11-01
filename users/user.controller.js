@@ -7,7 +7,6 @@ const jwtoken = require("jsonwebtoken");
 
 const router = express.Router();
 
-// routes
 router.post("/authenticate", authenticateSchema, authenticate);
 router.post("/register", register);
 router.get("/", verifyToken(), getAll);
@@ -18,15 +17,21 @@ router.delete("/:id", verifyToken(), _delete);
 router.post("/refresh-token", refreshToken);
 router.post("/revoke-token", verifyToken(), revokeTokenSchema, revokeToken);
 router.get("/:id/refresh-tokens", verifyToken(), getRefreshTokens);
-// routes
-// router.post("/authenticate", authenticateSchema, authenticate);
-// router.post("/refresh-token", refreshToken);
-// router.post("/revoke-token", authorize(), revokeTokenSchema, revokeToken);
-// router.get("/", authorize(Role.Admin), getAll);
-// router.get("/:id", authorize(), getById);
-// router.get("/:id/refresh-tokens", authorize(), getRefreshTokens);
+router.get("/:id/rooms", verifyToken(), getUserRooms);
 
 module.exports = router;
+
+async function getUserRooms(req, res, next) {
+  userService
+    .getRoomsOfUser(req.params.id)
+    .then((rooms) => {
+      res.json({
+        message: "Rooms of user fetched successfully",
+        data: rooms ?? [],
+      });
+    })
+    .catch((err) => next(err));
+}
 
 function authenticateSchema(req, res, next) {
   const schema = Joi.object({

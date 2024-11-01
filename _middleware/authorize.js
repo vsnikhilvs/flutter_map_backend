@@ -17,9 +17,7 @@ async function isRevoked(req, payload) {
       payload.payload.jwtToken,
       process.env.SECRET_KEY
     );
-    console.log("tokenInfo: ", tokenInfo);
     const user = await userService.getById(tokenInfo.sub);
-    console.log("user: ", user);
     return !user; // Return true if the user is not found (token should be revoked)
   } catch (error) {
     console.log("error: ", error);
